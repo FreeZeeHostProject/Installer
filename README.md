@@ -1,70 +1,39 @@
-# 🦅 Pterodactyl All-in-One Script
+# FreeZeeHost Theme Installer - Professional Edition
 
-![Version](https://img.shields.io/badge/version-stable-blue) ![Maintenance](https://img.shields.io/badge/maintained-yes-green) ![Lang](https://img.shields.io/badge/language-bash-orange)
+Premium Pterodactyl Theme Installer with Multi-Layer Security.
 
-Selamat datang di **Pterodactyl All-in-One Script**. Tools otomatisasi terbaik untuk instalasi, manajemen tema, dan utilitas server Pterodactyl Anda. Dirancang untuk efisiensi, kecepatan, dan kemudahan penggunaan.
+## ⚖️ License & Terms of Use
 
----
+This software is **Proprietary**. It is NOT Open Source.
 
-## 🚀 Instalasi Cepat
+- **Usage**: You are free to run this script to install themes on your VPS.
+- **Restrictions**: 
+  - **DO NOT** copy, modify, or distribute the source code.
+  - **DO NOT** re-brand or claim this project as your own.
+  - **DO NOT** use this code for commercial gain (reselling the script).
+  
+**All Rights Reserved © 2026 FreeZeeHost Official.**
 
-Untuk menghindari error dan memastikan Anda mendapatkan versi terbaru yang paling stabil, **sangat disarankan** untuk menjalankan script langsung melalui perintah di bawah ini.
+## 🛡️ Security Features
+- **IP Whitelisting**: Real-time MongoDB check for VPS IP authorization.
+- **2-Step Verification**: Mandatory secure password before accessing the installer.
+- **License Key**: Unique license key required for each session.
+- **Secure API Bridge**: Protects your database credentials from being exposed in the script.
 
-Anda tidak perlu pusing mengedit kode manual. Jika ada kendala atau bug, biarkan kami yang memperbaikinya untuk Anda. Cukup jalankan, dan nikmati hasilnya!
+## 🚀 Installation
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/Bangsano/themeinstaller/refs/heads/main/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/FreeZeeHostProject/installer/main/install.sh)
 ```
 
-> [!IMPORTANT]
-> **🛡️ EXCLUSIVE PROTECT PANEL**<br>
-> Ingin melindungi panel Pterodactyl Anda dari tangan jahil?<br>
-> Gunakan **Protect Panel Installer** yang tersedia khusus di website kami.<br>
-> 🔗 [Akses Di Sini](https://www.sano.biz.id/pterodactyl)
+## 🛠️ Admin Setup (MongoDB & API)
 
-## ✨ Fitur Utama
+1. **MongoDB**: Use the provided URI or your own Atlas cluster.
+2. **API Bridge**: 
+   - Located in `api/server.js`.
+   - Install dependencies: `npm install express mongoose body-parser`.
+   - Run: `node server.js`.
+3. **Seeding Data**: Use `api/seed_db.js` to add your VPS IP to the database for testing.
 
-Skrip ini mencakup berbagai macam fitur canggih yang terbagi dalam beberapa kategori:
-
-### 🎨 Manajemen Tema (Themes)
-
-Instalasi tema favorit Anda hanya dengan satu klik. Mendukung fitur **Uninstall** untuk mengembalikan panel ke kondisi original.
-
- * **Premium Themes:** Stellar, Billing, Enigma, Elysium, Frostcore, Nightcore, Reviactyl.
- * **Simple Themes:** IceMinecraft, Noobe, Nookure.
- * **Blueprint Based:** Nebula, Recolor.
-
-### ⚙️ Manajemen Panel & Node
-
- * **Auto Node:** Buat Node & Lokasi baru secara otomatis.
- * **Dependencies:** Install Dependensi & Blueprint Framework.
- * **Full Removal:** Uninstall Pterodactyl Panel (Bersih sampai akar).
- * **Security:** Hack Back Panel (Utilitas Keamanan Darurat).
-
-### 🔧 Utilitas Server
-
- * Fix & Run Wings (Daemon).
- * Ganti Password VPS dengan mudah.
-
-## 💻 Kompatibilitas Sistem
-
-Script ini telah diuji dan berjalan optimal pada sistem operasi berikut:
-
-| Operating System | Version | Status |
-|---|---|---|
-| Ubuntu | 22.04 | ✅ Tested |
-|  | 24.04 | ✅ Tested |
-| Debian | 10 | ✅ Tested |
-|  | 11 | ✅ Tested |
-|  | 12 | ✅ Tested |
-
-> Catatan: OS di atas adalah yang sudah saya tes, selebihnya bisa tes sendiri.
-
-> **📞 Bantuan & Dukungan**<br>
-> Punya pertanyaan? Menemukan bug/eror? Jangan ragu untuk menghubungi saya. Gunakan script ini dengan bijak!
-
-- Github Profile: [SANO OFFICIAL](https://github.com/Bangsano)
-- WhatsApp Channel: [KLIK DI SINI](https://whatsapp.com/channel/0029Vaji4SeLtOj6DEp4CO3G)
-- Telegram Chat: [HUBUNGI ATMIN](https://t.me/sanoofc)
-
-<p align="center">Made with ❤️ by Sano Official</p>
+---
+<p align="center">Made with ❤️ by FreeZeeHost</p>

@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ============================================================
-# SKRIP INI DI-REMAKE OLEH SANO OFFICIAL (TELEGRAM: @sanoofc)
-# DILARANG UNTUK MEMPERJUALBELIKAN SKRIP INI, APALAGI MEMBAGIKANNYA SECARA GRATIS!
-# GAK USAH NGEYEL! NGEYEL? MATI AJA LU, HIDUP LU GAK GUNA, KERJAANNYA CUMA MALING SC, JUAL/SHARE SC HASIL MALING
+#               FREEZEEHOST NODE CREATOR
+# ============================================================
+# Re-developed by: FreeZeeHost
+# Version: 2.0.0
 # ============================================================
 
 echo "Masukkan nama location (contoh: SGP): "
@@ -12,7 +13,7 @@ echo "Masukkan id location (contoh: 1): "
 read locid
 echo "Masukkan nama node (contoh: Nodes): "
 read node_name
-echo "Masukkan deskripsi (contoh: Panel by Sano Official): "
+echo "Masukkan deskripsi (contoh: Panel by FreeZeeHost): "
 read description
 echo "Masukkan domain node (contoh: nodepanel.example.com): "
 read domain
