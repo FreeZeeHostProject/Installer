@@ -43,6 +43,8 @@ BRIGHT_BLUE='\033[94m'
 BRIGHT_MAGENTA='\033[95m'
 BRIGHT_CYAN='\033[96m'
 BRIGHT_WHITE='\033[97m'
+BG_GREEN='\033[42m'
+BG_RED='\033[41m'
 
 # UI Helpers
 print_info() { echo -e "  ${BRIGHT_CYAN}${BOLD}💠 INFO${NC} ${WHITE}│ $1${NC}"; }
@@ -66,9 +68,9 @@ premium_box() {
 
 show_loading() {
   local duration=$1; local message=$2
-  echo -ne "  ${BRIGHT_YELLOW}${BOLD}⏳ $message${NC} "
-  for ((i=0; i<duration; i++)); do echo -ne "${BRIGHT_YELLOW}."; sleep 0.4; done
-  echo -e " ${BRIGHT_GREEN}DONE!${NC}"
+  echo -ne "  ${BRIGHT_MAGENTA}${BOLD}⏳ $message${NC} "
+  for ((i=0; i<duration; i++)); do echo -ne "${BRIGHT_CYAN}."; sleep 0.4; done
+  echo -e " ${BRIGHT_GREEN}SUCCESS!${NC}"
 }
 
 line_separator() { echo -e "  ${DIM}${WHITE}──────────────────────────────────────────────────────────────────────────${NC}"; }
@@ -169,12 +171,26 @@ install_theme() {
 
   print_info "Starting installation of $THEME_NAME..."
   check_ptero_dir || return 1; set -e
+  
+  # --- AUTO-DIRECT TO BLUEPRINT IF MISSING ---
+  if [[ "$SELECT_THEME" == [bB]* ]]; then
+    if [ ! -f "/var/www/pterodactyl/blueprint.sh" ]; then
+      print_warning "Blueprint Framework is required for this theme but was not found!"
+      echo -n -e "  ${BOLD}${WHITE}👉 Install Blueprint automatically? (y/n): ${NC}"; read bp_confirm
+      if [[ "$bp_confirm" == [yY] ]]; then
+        install_blueprint || return 1
+      else
+        print_error "Installation cancelled: Blueprint missing."
+        return 1
+      fi
+    fi
+  fi
+
   TEMP_DIR=$(mktemp -d); trap 'rm -rf -- "$TEMP_DIR"' EXIT; cd "$TEMP_DIR"
   wget -q "$THEME_URL"; local ZIP_FILE=$(basename "$THEME_URL")
   if [[ "$ZIP_FILE" == *.tar.gz ]]; then tar -xzf "$ZIP_FILE"; else unzip -oq "$ZIP_FILE" || true; fi
   
   if [[ "$SELECT_THEME" == [bB]* ]]; then
-    if [ ! -f "/var/www/pterodactyl/blueprint.sh" ]; then print_error "Blueprint required."; return 1; fi
     ID=$(find . -name "*.blueprint" -exec basename {} .blueprint \;)
     sudo mv "$ID.blueprint" /var/www/pterodactyl/
     cd /var/www/pterodactyl && sudo blueprint -install "$ID"
@@ -516,17 +532,17 @@ start_script() {
   echo -e "  ██╔══╝  ██╔══██╗██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██╔══██║██║   ██║╚════██║   ██║   "
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
-  echo -e "${NC}"; echo -e "  ${BOLD}${YELLOW}  [ 👑  SYSTEM INITIALIZING PREMIUM ACCESS 👑  ] ${NC}"
+  echo -e "${NC}"; echo -e "  ${BOLD}${BRIGHT_YELLOW}  [ 👑  SYSTEM INITIALIZING PREMIUM ACCESS 👑  ] ${NC}"
   echo ""
 
-  # 1. Tiga Tahap Pengecekan (Sesuai permintaan user)
-  show_loading 3 "Checking System Resources"
-  show_loading 3 "Checking Network Protocol"
-  show_loading 3 "Checking Secure Connection"
+  # 1. Tiga Tahap Pengecekan
+  show_loading 3 "Initializing System Engine"
+  show_loading 3 "Securing Network Protocol"
+  show_loading 3 "Validating Secure Connection"
   echo ""
 
-  # 2. Install Dependencies (Dibuat terlihat tapi bersih)
-  print_info "Installing core dependencies (jq, gawk, nodejs)..."
+  # 2. Install Dependencies
+  print_info "Checking core dependencies (jq, gawk, nodejs)..."
   export DEBIAN_FRONTEND=noninteractive
   sudo apt-get update -qq > /dev/null 2>&1
   sudo apt-get install -qq -y jq gawk curl wget > /dev/null 2>&1
@@ -536,41 +552,51 @@ start_script() {
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
     sudo apt-get install -qq -y nodejs > /dev/null 2>&1
   fi
-  print_success "Dependencies installed successfully."
+  print_success "System is ready."
+  sleep 1.5
+  
+  # --- CLEAR & GANTI KE VERIFIKASI ---
+  clear
+  echo -e "${BRIGHT_CYAN}${BOLD}"
+  echo -e "  ╔══════════════════════════════════════════════════════════════════════╗"
+  echo -e "  ║               🔒 SECURITY & IDENTITY VERIFICATION 🔒                 ║"
+  echo -e "  ╚══════════════════════════════════════════════════════════════════════╝${NC}"
   echo ""
 
   # 3. Verifikasi IP
   fetch_vps_ip
-  premium_header "SECURITY - IP VERIFICATION" "$BRIGHT_CYAN"
-  print_info "Verifying IP: $VPS_IP"
+  echo -e "  ${BRIGHT_WHITE}${BOLD}➤ FIREWALL CHECK:${NC}"
+  print_info "Targeting IP: ${BRIGHT_YELLOW}$VPS_IP${NC}"
   if verify_mongodb_direct "ip"; then
-    print_success "IP AUTHORIZED"
+    echo -e "  ${BOLD}STATUS: ${BG_GREEN}${BRIGHT_WHITE} AUTHORIZED ${NC}"
   else
-    print_error "IP UNAUTHORIZED: VPS not whitelisted."
+    echo -e "  ${BOLD}STATUS: ${BG_RED}${BRIGHT_WHITE} UNAUTHORIZED ${NC}"
+    print_error "Access Denied: Your VPS IP is not whitelisted."
     exit 1
   fi
   echo ""
 
-  # 4. Verifikasi Identitas (Password Owner)
+  # 4. Verifikasi 2-Step
   SESSION_FILE="/root/.fzh_session"
   if [ ! -f "$SESSION_FILE" ]; then
-    premium_header "IDENTITY VERIFICATION" "$BRIGHT_MAGENTA"
-    print_warning "Password entries are hidden (invisible) while typing."
-    echo -n -e "  ${BOLD}${WHITE}👉 OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
-    echo -n -e "  ${BOLD}${WHITE}👉 CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
+    echo -e "  ${BRIGHT_WHITE}${BOLD}➤ IDENTITY VERIFICATION (2-STEP):${NC}"
+    print_warning "Security Note: Password inputs will not be displayed."
+    echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
+    echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
     
-    print_info "Verifying credentials..."
+    print_info "Syncing with Database Cloud..."
     if verify_mongodb_direct "full" "$SECOND_PWD" "$CLIENT_API_KEY"; then
-      print_success "Access Granted!"
+      echo -e "  ${BOLD}RESULT: ${BG_GREEN}${BRIGHT_WHITE} ACCESS GRANTED ${NC}"
       touch "$SESSION_FILE"
-      sleep 2
+      show_loading 2 "Building Premium Dashboard"
     else
-      print_error "Access Denied: Invalid Credentials."
+      echo -e "  ${BOLD}RESULT: ${BG_RED}${BRIGHT_WHITE} ACCESS DENIED ${NC}"
+      print_error "Error: Invalid Credentials provided."
       exit 1
     fi
   else
-    print_success "Session Active: Identity Verified."
-    sleep 1
+    echo -e "  ${BRIGHT_GREEN}${BOLD}✔ Session Active: Welcome back, Owner.${NC}"
+    sleep 1.5
   fi
 }
 
