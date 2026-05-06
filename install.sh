@@ -17,7 +17,7 @@
 #
 # Violation of these terms will result in access revocation.
 # ============================================================
-# Version: 3.2.0-PRO
+# Version: 3.3.0-PRO
 # ============================================================
 
 # Reset
@@ -53,7 +53,6 @@ print_warning() { echo -e "  ${BRIGHT_YELLOW}${BOLD}⚠️ WARNING${NC} ${WHITE}
 print_error() { echo -e "  ${BRIGHT_RED}${BOLD}❌ ERROR${NC} ${WHITE}│ $1${NC}"; }
 
 premium_header() {
-  clear
   local title=$1; local color=$2
   echo -e "  ${color}${BOLD}┌────────────────────────────────────────────────────────────────────────┐${NC}"
   echo -e "  ${color}${BOLD}│${NC}  ${WHITE}${BOLD}${title}${NC}"
@@ -111,10 +110,7 @@ inject_after_brace() {
   if [[ ! -f "$file" ]]; then return; fi
   if grep -q "FreeZeeHost Premium" "$file" || grep -q "FreeZeeHost Protected" "$file"; then return; fi
   
-  # Create backup if it doesn't exist
-  if [[ ! -f "${file}.bak_fzh" ]]; then
-    cp "$file" "${file}.bak_fzh"
-  fi
+  if [[ ! -f "${file}.bak_fzh" ]]; then cp "$file" "${file}.bak_fzh"; fi
   
   export INJECTED_CODE="$code"
   gawk -v pat="$pattern" '
@@ -128,10 +124,7 @@ inject_after_line() {
   if [[ ! -f "$file" ]]; then return; fi
   if grep -q "FreeZeeHost Premium" "$file" || grep -q "FreeZeeHost Protected" "$file"; then return; fi
   
-  # Create backup if it doesn't exist
-  if [[ ! -f "${file}.bak_fzh" ]]; then
-    cp "$file" "${file}.bak_fzh"
-  fi
+  if [[ ! -f "${file}.bak_fzh" ]]; then cp "$file" "${file}.bak_fzh"; fi
   
   export INJECTED_CODE="$code"
   gawk -v pat="$pattern" '{ print } (index($0, pat) && !done) { print ENVIRON["INJECTED_CODE"]; done=1; }' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
@@ -188,18 +181,11 @@ install_theme() {
   print_info "Starting installation of $THEME_NAME..."
   check_ptero_dir || return 1; set -e
   
-  # --- AUTO-DIRECT TO BLUEPRINT IF MISSING ---
   if [[ "$SELECT_THEME" == [bB]* ]]; then
     if [ ! -f "/var/www/pterodactyl/blueprint.sh" ]; then
-      print_warning "Blueprint Framework is required for this theme but was not found!"
+      print_warning "Blueprint Framework is required!"
       echo -n -e "  ${BOLD}${WHITE}👉 Install Blueprint automatically? (y/n): ${NC}"; read bp_confirm
-      if [[ "$bp_confirm" == [yY] ]]; then
-        install_blueprint || return 1
-        cd /var/www/pterodactyl # Ensure we are in the right place after BP install
-      else
-        print_error "Installation cancelled: Blueprint missing."
-        return 1
-      fi
+      if [[ "$bp_confirm" == [yY] ]]; then install_blueprint || return 1; fi
     fi
   fi
 
@@ -251,8 +237,7 @@ uninstall_theme() {
   print_info "⚙️  Starting panel reset process..."
   
   print_info "Backing up .env..."
-  TEMP_BACKUP=$(mktemp -d)
-  if [ -f ".env" ]; then cp .env "$TEMP_BACKUP/"; fi
+  TEMP_BACKUP=$(mktemp -d); if [ -f ".env" ]; then cp .env "$TEMP_BACKUP/"; fi
 
   print_info "Removing old panel files..."
   sudo find . -mindepth 1 -delete
@@ -261,8 +246,7 @@ uninstall_theme() {
   curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | sudo tar -xzf - -C /var/www/pterodactyl
 
   print_info "Restoring .env..."
-  if [ -f "$TEMP_BACKUP/.env" ]; then mv "$TEMP_BACKUP/.env" .; fi
-  rm -rf "$TEMP_BACKUP"
+  if [ -f "$TEMP_BACKUP/.env" ]; then mv "$TEMP_BACKUP/.env" .; fi; rm -rf "$TEMP_BACKUP"
 
   print_info "Installing dependencies..."
   sudo chmod -R 755 storage/* bootstrap/cache/
@@ -276,8 +260,7 @@ uninstall_theme() {
 
   print_info "Restarting services..."
   sudo systemctl restart nginx > /dev/null 2>&1 || sudo systemctl restart apache2 > /dev/null 2>&1
-  sudo systemctl restart pteroq
-  sudo -u www-data php artisan up
+  sudo systemctl restart pteroq; sudo -u www-data php artisan up
 
   premium_box "PANEL RESET SUCCESSFUL" "$BRIGHT_GREEN"; sleep 2
 }
@@ -308,18 +291,16 @@ install_blueprint() {
   premium_header "BLUEPRINT FRAMEWORK" "$BRIGHT_BLUE"
   read -p "  👉 Install Blueprint Core? (y/n): " confirm
   if [[ "$confirm" != "y" ]]; then return; fi
-  check_ptero_dir || return 1; set +e # Handle errors manually
+  check_ptero_dir || return 1; set +e 
   
   print_info "🚀 Running pre-install check..."
   cd /var/www/pterodactyl
   
-  # --- AUTO-FIX NODE.JS VERSION ---
   local NODE_VER=$(node -v 2>/dev/null | cut -d'.' -f1 | sed 's/v//')
   if [[ -z "$NODE_VER" ]] || [[ "$NODE_VER" -lt 20 ]]; then
     print_warning "Node.js $NODE_VER detected. Blueprint requires >20.x. Auto-fixing..."
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
     sudo apt-get install -qq -y nodejs > /dev/null 2>&1
-    print_success "Node.js updated to 22.x"
   fi
 
   DOWNLOAD_URL=$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | grep 'browser_download_url' | grep 'release.zip' | cut -d '"' -f 4)
@@ -467,48 +448,32 @@ install_protect() {
 }
 
 install_protect_internal() {
-  local level=$1; local PTERO_PATH="/var/www/pterodactyl"
-  check_ptero_dir || return
-  
+  local level=$1; local PTERO_PATH="/var/www/pterodactyl"; check_ptero_dir || return
   clear; premium_header "ACTIVATING PROTECTION LEVEL $level" "$BRIGHT_MAGENTA"
-  read -p "  👉 Enter Main Admin ID (usually 1): " ADMIN_ID
-  [[ -z "$ADMIN_ID" ]] && ADMIN_ID=1
-
+  read -p "  👉 Enter Main Admin ID (usually 1): " ADMIN_ID; [[ -z "$ADMIN_ID" ]] && ADMIN_ID=1
   print_info "Injecting Security Layer... (Level: $level)"
-
-  # Variables for injection
   local API_USER_CTRL="$PTERO_PATH/app/Http/Controllers/Api/Application/Users/UserController.php"
   local ADMIN_USER_CTRL="$PTERO_PATH/app/Http/Controllers/Admin/UserController.php"
   local ADM_SERVER_CTRL="$PTERO_PATH/app/Http/Controllers/Admin/ServersController.php"
   local F2A_CTRL="$PTERO_PATH/app/Http/Controllers/Api/Client/TwoFactorController.php"
-
-  # LEVEL 1: Anti-Delete/Edit Main Admin
   local ANTI_HAPUS_ADMIN="        if (\$user->id === $ADMIN_ID) { abort(403, 'FreeZeeHost: Main Admin cannot be deleted.'); }"
   local ANTI_EDIT_ADMIN="        if (\$targetUser->id === $ADMIN_ID && auth()->user()->id !== $ADMIN_ID) { abort(403, 'FreeZeeHost: Only Main Admin can edit this account.'); }"
-  
   inject_after_brace "$API_USER_CTRL" "public function delete" "$ANTI_HAPUS_ADMIN"
   inject_after_brace "$ADMIN_USER_CTRL" "public function delete" "$ANTI_HAPUS_ADMIN"
   inject_after_brace "$API_USER_CTRL" "public function update" "$ANTI_EDIT_ADMIN"
   inject_after_brace "$ADMIN_USER_CTRL" "public function update" "$ANTI_EDIT_ADMIN"
-
-  # LEVEL 2: Status Administrator Security
   if [ "$level" -ge 2 ]; then
     local STATUS_SEC="        if (request()->has('root_admin') && auth()->user()->id !== $ADMIN_ID) { abort(403, 'FreeZeeHost: Only Main Admin can change Admin status.'); }"
     inject_after_brace "$ADMIN_USER_CTRL" "public function update" "$STATUS_SEC"
   fi
-
-  # LEVEL 3: Server Protection
   if [ "$level" -ge 3 ]; then
     local SERVER_SEC="        if (auth()->user()->id !== $ADMIN_ID && auth()->user()->id !== \$server->owner_id) { abort(403, 'FreeZeeHost: Unauthorized server action.'); }"
     inject_after_brace "$ADM_SERVER_CTRL" "public function delete" "$SERVER_SEC"
   fi
-
-  # LEVEL 4: 2FA Protection
   if [ "$level" -ge 4 ]; then
     local F2A_SEC="        if (auth()->user()->id !== $ADMIN_ID) { abort(403, 'FreeZeeHost: 2FA management restricted.'); }"
     inject_after_brace "$F2A_CTRL" "public function store" "$F2A_SEC"
   fi
-
   premium_box "PROTECTION LEVEL $level ACTIVE" "$BRIGHT_GREEN"; sleep 2
 }
 
@@ -517,21 +482,16 @@ uninstall_protect_internal() {
   read -p "  👉 Restore all protected files? (y/n): " confirm
   if [[ "$confirm" != "y" ]]; then return; fi
   check_ptero_dir || return
-  
   print_info "Restoring backups..."
   find /var/www/pterodactyl -name "*.bak_fzh" | while read f; do
-    original="${f%.bak_fzh}"
-    mv "$f" "$original"
-    print_success "Restored: $(basename "$original")"
+    original="${f%.bak_fzh}"; mv "$f" "$original"; print_success "Restored: $(basename "$original")"
   done
-  
   rm -f /var/www/pterodactyl/app/Http/Controllers/FreeZeeHostganteng.json
   premium_box "PROTECTION REMOVED" "$BRIGHT_GREEN"; sleep 2
 }
 
 install_protect_custom_internal() {
-  local EXTRA; local ADMIN_ID=1; local PTERO_PATH="/var/www/pterodactyl"
-  check_ptero_dir || return
+  local EXTRA; local ADMIN_ID=1; local PTERO_PATH="/var/www/pterodactyl"; check_ptero_dir || return
   clear; premium_box "CUSTOM PROTECTION" "$BRIGHT_MAGENTA"
   read -p "  👉 Select Extra (1-12): " EXTRA
   local CODE="        if (auth()->user()->id !== $ADMIN_ID) { abort(403, 'FreeZeeHost Protected'); }"
@@ -551,9 +511,22 @@ verify_mongodb_direct() {
 const mongoose = require('mongoose');
 const _0x1f2e = 'bW9uZ29kYitzcnY6Ly9mcmVlemVlaG9zdDpGcmVlWmVlSG9zdDEyXy5AY2x1c3RlcjAudnl3dTV4dC5tb25nb2RiLm5ldC9GcmVlWmVlSG9zdD9yZXRyeVdyaXRlcz10cnVlJnc9bWFqb3JpdHkmYXBwTmFtZT1DbHVzdGVyMA==';
 const MONGO_URI = Buffer.from(_0x1f2e, 'base64').toString();
-const whitelistSchema = new mongoose.Schema({ ip: String, password: { type: String }, custom_apikey: { type: String }, status: { type: String, default: 'active' } }, { collection: 'whitelist' });
+const whitelistSchema = new mongoose.Schema({ ip: String, password: { type: String }, custom_apikey: { type: String }, status: { type: String } }, { collection: 'whitelist' });
 const Whitelist = mongoose.model('Whitelist', whitelistSchema);
-async function check() { try { await mongoose.connect(MONGO_URI); let found; if ('$check_type' === 'ip') { found = await Whitelist.findOne({ ip: '$VPS_IP', status: 'active' }); } else { found = await Whitelist.findOne({ ip: '$VPS_IP', password: '$pwd_input', custom_apikey: '$key_input', status: 'active' }); } process.exit(found ? 0 : 1); } catch (e) { process.exit(2); } }
+async function check() { 
+    try { 
+        await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 }); 
+        let found; 
+        if ('$check_type' === 'ip') { 
+            found = await Whitelist.findOne({ ip: '$VPS_IP', status: { \$in: ['active', 'pending'] } }); 
+        } else { 
+            found = await Whitelist.findOne({ ip: '$VPS_IP', password: '$pwd_input', custom_apikey: '$key_input' }); 
+        } 
+        process.exit(found ? 0 : 1); 
+    } catch (e) { 
+        process.exit(2); 
+    } 
+}
 check();
 EOF
   return $?
@@ -571,78 +544,43 @@ start_script() {
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${BRIGHT_YELLOW}  [ 👑  SYSTEM INITIALIZING PREMIUM ACCESS 👑  ] ${NC}"
   echo ""
-
-  # 1. Tiga Tahap Pengecekan
-  show_loading 3 "Initializing System Engine"
-  show_loading 3 "Securing Network Protocol"
-  show_loading 3 "Validating Secure Connection"
-  echo ""
-
-  # 2. Install Dependencies (Visible & Auto-Install node/mongoose)
+  show_loading 3 "Initializing System Engine"; show_loading 3 "Securing Network Protocol"; show_loading 3 "Validating Secure Connection"; echo ""
   premium_header "SYSTEM PREPARATION" "$BRIGHT_WHITE"
   print_info "Checking core dependencies..."
-  export DEBIAN_FRONTEND=noninteractive
-  sudo apt-get update -qq > /dev/null 2>&1
-  sudo apt-get install -qq -y jq gawk curl wget > /dev/null 2>&1
-  
+  export DEBIAN_FRONTEND=noninteractive; sudo apt-get update -qq > /dev/null 2>&1; sudo apt-get install -qq -y jq gawk curl wget > /dev/null 2>&1
   if ! command -v node &> /dev/null; then
-    print_warning "Node.js missing. Deploying Node.js 22..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
-    sudo apt-get install -qq -y nodejs > /dev/null 2>&1
+    print_warning "Node.js missing. Deploying Node.js 22..."; curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1; sudo apt-get install -qq -y nodejs > /dev/null 2>&1
   fi
-  
-  # Auto-install mongoose for direct DB check
   if ! node -e "require('mongoose')" &> /dev/null; then
-    print_info "Preparing Database Connector (Mongoose)..."
-    npm install -g mongoose --silent > /dev/null 2>&1
-    export NODE_PATH=$(npm root -g)
+    print_info "Preparing Database Connector (Mongoose)..."; npm install -g mongoose --silent > /dev/null 2>&1; export NODE_PATH=$(npm root -g)
   fi
-
-  print_success "System is ready."
-  sleep 1.5
-  
-  # --- CLEAR & GANTI KE VERIFIKASI ---
+  print_success "System is ready."; sleep 1.5
   clear
-  echo -e "${BRIGHT_CYAN}${BOLD}"
-  echo -e "  ╔══════════════════════════════════════════════════════════════════════╗"
+  echo -e "${BRIGHT_CYAN}${BOLD}  ╔══════════════════════════════════════════════════════════════════════╗"
   echo -e "  ║               🔒 SECURITY & IDENTITY VERIFICATION 🔒                 ║"
-  echo -e "  ╚══════════════════════════════════════════════════════════════════════╝${NC}"
-  echo ""
-
-  # 3. Verifikasi IP
-  fetch_vps_ip
-  echo -e "  ${BRIGHT_WHITE}${BOLD}➤ FIREWALL CHECK:${NC}"
-  print_info "Targeting IP: ${BRIGHT_YELLOW}$VPS_IP${NC}"
+  echo -e "  ╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
+  fetch_vps_ip; echo -e "  ${BRIGHT_WHITE}${BOLD}➤ FIREWALL CHECK:${NC}"; print_info "Targeting IP: ${BRIGHT_YELLOW}$VPS_IP${NC}"
   if verify_mongodb_direct "ip"; then
     echo -e "  ${BOLD}STATUS: ${BG_GREEN}${BRIGHT_WHITE} AUTHORIZED ${NC}"
   else
     echo -e "  ${BOLD}STATUS: ${BG_RED}${BRIGHT_WHITE} UNAUTHORIZED ${NC}"
-    print_error "Access Denied: Your VPS IP is not whitelisted."
-    exit 1
+    print_error "Access Denied: Your VPS IP is not whitelisted."; exit 1
   fi
   echo ""
-
-  # 4. Verifikasi 2-Step
   SESSION_FILE="/root/.fzh_session"
   if [ ! -f "$SESSION_FILE" ]; then
     echo -e "  ${BRIGHT_WHITE}${BOLD}➤ IDENTITY VERIFICATION (2-STEP):${NC}"
     print_warning "Note: Password inputs are invisible while typing."
     echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
     echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
-    
     print_info "Syncing with Database Cloud..."
     if verify_mongodb_direct "full" "$SECOND_PWD" "$CLIENT_API_KEY"; then
-      echo -e "  ${BOLD}RESULT: ${BG_GREEN}${BRIGHT_WHITE} ACCESS GRANTED ${NC}"
-      touch "$SESSION_FILE"
-      show_loading 2 "Building Premium Dashboard"
+      echo -e "  ${BOLD}RESULT: ${BG_GREEN}${BRIGHT_WHITE} ACCESS GRANTED ${NC}"; touch "$SESSION_FILE"; show_loading 2 "Building Premium Dashboard"
     else
-      echo -e "  ${BOLD}RESULT: ${BG_RED}${BRIGHT_WHITE} ACCESS DENIED ${NC}"
-      print_error "Error: Invalid Credentials provided."
-      exit 1
+      echo -e "  ${BOLD}RESULT: ${BG_RED}${BRIGHT_WHITE} ACCESS DENIED ${NC}"; print_error "Error: Invalid Credentials provided."; exit 1
     fi
   else
-    echo -e "  ${BRIGHT_GREEN}${BOLD}✔ Session Active: Welcome back, Owner.${NC}"
-    sleep 1.5
+    echo -e "  ${BRIGHT_GREEN}${BOLD}✔ Session Active: Welcome back, Owner.${NC}"; sleep 1.5
   fi
 }
 
@@ -658,7 +596,7 @@ while true; do
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${WHITE}┌───────────────────────── ${BRIGHT_YELLOW}PREMIUM DASHBOARD${WHITE} ──────────────────────────┐${NC}"
-  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.2.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
+  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.3.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
   echo -e "  ${BOLD}${WHITE}└────────────────────────────────────────────────────────────────────────┘${NC}"
   echo ""; echo -e "  ${BOLD}${BRIGHT_MAGENTA}💎 EXCLUSIVE SERVICES:${NC}"
   echo -e "    ${BRIGHT_WHITE}${BOLD}[1]  ${NC}${BRIGHT_BLUE}🎨 Premium Themes${NC}\e[45G ${BRIGHT_WHITE}${BOLD}[13] ${NC}${BRIGHT_GREEN}📑 Install PHPMyAdmin${NC}"
