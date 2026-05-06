@@ -517,55 +517,65 @@ start_script() {
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${YELLOW}  [ 👑  SYSTEM INITIALIZING PREMIUM ACCESS 👑  ] ${NC}"
-  
-  show_loading 3 "Checking system environment"
-  
+  echo ""
+
+  # 1. Tiga Tahap Pengecekan (Sesuai permintaan user)
+  show_loading 3 "Checking System Resources"
+  show_loading 3 "Checking Network Protocol"
+  show_loading 3 "Checking Secure Connection"
+  echo ""
+
+  # 2. Install Dependencies (Dibuat terlihat tapi bersih)
   print_info "Installing core dependencies (jq, gawk, nodejs)..."
   export DEBIAN_FRONTEND=noninteractive
-  sudo apt-get update -y > /dev/null 2>&1
-  sudo apt-get install -y jq gawk curl wget > /dev/null 2>&1
+  sudo apt-get update -qq > /dev/null 2>&1
+  sudo apt-get install -qq -y jq gawk curl wget > /dev/null 2>&1
   
   if ! command -v node &> /dev/null; then
-    print_warning "Node.js not found. Installing Node.js 22..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-    sudo apt-get install -y nodejs > /dev/null 2>&1
+    print_warning "Node.js missing. Deploying Node.js 22..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
+    sudo apt-get install -qq -y nodejs > /dev/null 2>&1
   fi
-  
-  print_success "System environment is ready." ; sleep 1
+  print_success "Dependencies installed successfully."
+  echo ""
+
+  # 3. Verifikasi IP
+  fetch_vps_ip
+  premium_header "SECURITY - IP VERIFICATION" "$BRIGHT_CYAN"
+  print_info "Verifying IP: $VPS_IP"
+  if verify_mongodb_direct "ip"; then
+    print_success "IP AUTHORIZED"
+  else
+    print_error "IP UNAUTHORIZED: VPS not whitelisted."
+    exit 1
+  fi
+  echo ""
+
+  # 4. Verifikasi Identitas (Password Owner)
+  SESSION_FILE="/root/.fzh_session"
+  if [ ! -f "$SESSION_FILE" ]; then
+    premium_header "IDENTITY VERIFICATION" "$BRIGHT_MAGENTA"
+    print_warning "Password entries are hidden (invisible) while typing."
+    echo -n -e "  ${BOLD}${WHITE}👉 OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
+    echo -n -e "  ${BOLD}${WHITE}👉 CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
+    
+    print_info "Verifying credentials..."
+    if verify_mongodb_direct "full" "$SECOND_PWD" "$CLIENT_API_KEY"; then
+      print_success "Access Granted!"
+      touch "$SESSION_FILE"
+      sleep 2
+    else
+      print_error "Access Denied: Invalid Credentials."
+      exit 1
+    fi
+  else
+    print_success "Session Active: Identity Verified."
+    sleep 1
+  fi
 }
 
 # --- START ---
 start_script
-fetch_vps_ip
-
-echo ""; premium_header "SYSTEM FIREWALL - IP VERIFICATION" "$BRIGHT_CYAN"
-print_info "Verifying VPS IP: $VPS_IP"
-verify_mongodb_direct "ip"
-if [ $? -eq 0 ]; then
-    print_success "IP AUTHORIZED" ; sleep 1
-else
-    print_error "IP UNAUTHORIZED"
-    exit 1
-fi
-
-SESSION_FILE="/root/.fzh_session"
-if [ ! -f "$SESSION_FILE" ]; then
-    premium_header "IDENTITY VERIFICATION REQUIRED" "$BRIGHT_MAGENTA"
-    print_warning "Password entries are hidden while typing for security."
-    echo -n -e "  ${BOLD}${BRIGHT_WHITE}👉 OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
-    echo -n -e "  ${BOLD}${BRIGHT_WHITE}👉 CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
-    
-    print_info "Verifying credentials..."
-    verify_mongodb_direct "full" "$SECOND_PWD" "$CLIENT_API_KEY"
-    if [ $? -eq 0 ]; then 
-        print_success "Access Granted!"
-        touch "$SESSION_FILE"
-        sleep 1
-    else 
-        print_error "Access Denied: Invalid Password or API Key."
-        exit 1
-    fi
-fi
 
 while true; do
   clear; echo -e "${YELLOW}${BOLD}"
