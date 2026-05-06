@@ -17,7 +17,7 @@
 #
 # Violation of these terms will result in access revocation.
 # ============================================================
-# Version: 3.0.0-PRO
+# Version: 3.1.0-PRO
 # ============================================================
 
 # Reset
@@ -53,6 +53,7 @@ print_warning() { echo -e "  ${BRIGHT_YELLOW}${BOLD}⚠️ WARNING${NC} ${WHITE}
 print_error() { echo -e "  ${BRIGHT_RED}${BOLD}❌ ERROR${NC} ${WHITE}│ $1${NC}"; }
 
 premium_header() {
+  clear
   local title=$1; local color=$2
   echo -e "  ${color}${BOLD}┌────────────────────────────────────────────────────────────────────────┐${NC}"
   echo -e "  ${color}${BOLD}│${NC}  ${WHITE}${BOLD}${title}${NC}"
@@ -74,6 +75,21 @@ show_loading() {
 }
 
 line_separator() { echo -e "  ${DIM}${WHITE}──────────────────────────────────────────────────────────────────────────${NC}"; }
+
+# --- ERROR HANDLER MENU ---
+error_recovery_menu() {
+  local msg=$1
+  print_error "$msg"
+  echo ""
+  echo -e "  ${BOLD}${WHITE}Apa yang ingin Anda lakukan?${NC}"
+  echo -e "  ${BRIGHT_WHITE}${BOLD} [1]${NC} ${WHITE}🏠 Kembali ke Dashboard${NC}"
+  echo -e "  ${BRIGHT_WHITE}${BOLD} [2]${NC} ${WHITE}❌ Keluar dari Skrip${NC}"
+  echo ""; echo -n -e "  ${BOLD}${BRIGHT_YELLOW}👉 Masukkan Pilihan: ${NC}"; read rec_choice
+  case "$rec_choice" in
+    1) return 0 ;;
+    *) exit 0 ;;
+  esac
+}
 
 check_ptero_dir() {
   if [ ! -d "/var/www/pterodactyl" ]; then
@@ -179,6 +195,7 @@ install_theme() {
       echo -n -e "  ${BOLD}${WHITE}👉 Install Blueprint automatically? (y/n): ${NC}"; read bp_confirm
       if [[ "$bp_confirm" == [yY] ]]; then
         install_blueprint || return 1
+        cd /var/www/pterodactyl # Ensure we are in the right place after BP install
       else
         print_error "Installation cancelled: Blueprint missing."
         return 1
@@ -291,13 +308,33 @@ install_blueprint() {
   premium_header "BLUEPRINT FRAMEWORK" "$BRIGHT_BLUE"
   read -p "  👉 Install Blueprint Core? (y/n): " confirm
   if [[ "$confirm" != "y" ]]; then return; fi
-  check_ptero_dir || return 1; set -e
-  print_info "🚀 Installing..."
+  check_ptero_dir || return 1; set +e # Handle errors manually
+  
+  print_info "🚀 Running pre-install check..."
   cd /var/www/pterodactyl
+  
+  # --- AUTO-FIX NODE.JS VERSION ---
+  local NODE_VER=$(node -v 2>/dev/null | cut -d'.' -f1 | sed 's/v//')
+  if [[ -z "$NODE_VER" ]] || [[ "$NODE_VER" -lt 20 ]]; then
+    print_warning "Node.js $NODE_VER detected. Blueprint requires >20.x. Auto-fixing..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
+    sudo apt-get install -qq -y nodejs > /dev/null 2>&1
+    print_success "Node.js updated to 22.x"
+  fi
+
   DOWNLOAD_URL=$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | grep 'browser_download_url' | grep 'release.zip' | cut -d '"' -f 4)
   wget -q "$DOWNLOAD_URL" -O b.zip && unzip -oq b.zip && rm b.zip
   sudo npm i -g yarn && yarn install && yarn add cross-env
-  chmod +x blueprint.sh && yes | sudo bash blueprint.sh
+  
+  chmod +x blueprint.sh
+  print_info "Executing Blueprint Installer..."
+  yes | sudo bash blueprint.sh
+  
+  if [ $? -ne 0 ]; then
+    error_recovery_menu "Blueprint installation failed due to dependency issues."
+    return 1
+  fi
+  
   premium_box "BLUEPRINT READY" "$BRIGHT_GREEN"; sleep 2
 }
 
@@ -612,7 +649,7 @@ while true; do
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${WHITE}┌───────────────────────── ${BRIGHT_YELLOW}PREMIUM DASHBOARD${WHITE} ──────────────────────────┐${NC}"
-  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.0.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
+  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.1.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
   echo -e "  ${BOLD}${WHITE}└────────────────────────────────────────────────────────────────────────┘${NC}"
   echo ""; echo -e "  ${BOLD}${BRIGHT_MAGENTA}💎 EXCLUSIVE SERVICES:${NC}"
   echo -e "    ${BRIGHT_WHITE}${BOLD}[1]  ${NC}${BRIGHT_BLUE}🎨 Premium Themes${NC}\e[45G ${BRIGHT_WHITE}${BOLD}[13] ${NC}${BRIGHT_GREEN}📑 Install PHPMyAdmin${NC}"
