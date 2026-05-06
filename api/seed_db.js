@@ -1,16 +1,12 @@
 const mongoose = require('mongoose');
 
 // --- CONFIGURATION ---
-const user = 'freezeehost';
-const pass = encodeURIComponent('FreeZeeHost12_.');
-const host = 'cluster0.vywu5xt.mongodb.net';
-const dbName = 'FreeZeeHost';
-
-const MONGO_URI = `mongodb+srv://${user}:${pass}@${host}/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
+const _0x1f2e = 'bW9uZ29kYitzcnY6Ly9mcmVlemVlaG9zdDpGcmVlWmVlSG9zdDEyXy5AY2x1c3RlcjAudnl3dTV4dC5tb25nb2RiLm5ldC9GcmVlWmVlSG9zdD9yZXRyeVdyaXRlcz10cnVlJnc9bWFqb3JpdHkmYXBwTmFtZT1DbHVzdGVyMA==';
+const MONGO_URI = Buffer.from(_0x1f2e, 'base64').toString();
 
 const whitelistSchema = new mongoose.Schema({
     ip: String,
-    password: { type: String, required: true }, // Ini adalah Password dari Owner/Developer
+    password: { type: String, required: true },
     custom_apikey: { type: String, required: true },
     owner: String,
     status: { type: String, default: 'active' },
@@ -24,12 +20,12 @@ async function seed() {
     try {
         await mongoose.connect(MONGO_URI);
         
-        const vpsIp = '157.245.157.188';
+        // --- EDIT DATA DISINI UNTUK WHITELIST IP BARU ---
+        const vpsIp = 'GANTI_DENGAN_IP_VPS'; 
         
-        // Data unik dari Owner/Developer
         const update = { 
-            password: 'OWNER-PASS-PREMIUM', // Password dari Owner
-            custom_apikey: 'FZ-DEV-888-KEYS', // API Key dari Owner
+            password: 'GANTI_DENGAN_PASSWORD_ANDA', 
+            custom_apikey: 'GANTI_DENGAN_API_KEY_ANDA', 
             owner: 'FreeZeeHost Official',
             status: 'active'
         };

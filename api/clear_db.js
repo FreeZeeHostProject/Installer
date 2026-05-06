@@ -1,12 +1,8 @@
 const mongoose = require('mongoose');
 
 // --- CONFIGURATION ---
-const user = 'freezeehost';
-const pass = encodeURIComponent('FreeZeeHost12_.');
-const host = 'cluster0.vywu5xt.mongodb.net';
-const dbName = 'FreeZeeHost';
-
-const MONGO_URI = `mongodb+srv://${user}:${pass}@${host}/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
+const _0x1f2e = 'bW9uZ29kYitzcnY6Ly9mcmVlemVlaG9zdDpGcmVlWmVlSG9zdDEyXy5AY2x1c3RlcjAudnl3dTV4dC5tb25nb2RiLm5ldC9GcmVlWmVlSG9zdD9yZXRyeVdyaXRlcz10cnVlJnc9bWFqb3JpdHkmYXBwTmFtZT1DbHVzdGVyMA==';
+const MONGO_URI = Buffer.from(_0x1f2e, 'base64').toString();
 
 const whitelistSchema = new mongoose.Schema({
     ip: String,
