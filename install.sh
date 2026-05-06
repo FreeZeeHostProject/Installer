@@ -517,24 +517,54 @@ start_script() {
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${YELLOW}  [ 👑  SYSTEM INITIALIZING PREMIUM ACCESS 👑  ] ${NC}"
-  show_loading 3 "Checking environment"
-  export DEBIAN_FRONTEND=noninteractive; sudo apt-get update -y > /dev/null 2>&1; sudo apt-get install -y jq gawk > /dev/null 2>&1
-  print_success "System Ready." ; sleep 1; clear
+  
+  show_loading 3 "Checking system environment"
+  
+  print_info "Installing core dependencies (jq, gawk, nodejs)..."
+  export DEBIAN_FRONTEND=noninteractive
+  sudo apt-get update -y > /dev/null 2>&1
+  sudo apt-get install -y jq gawk curl wget > /dev/null 2>&1
+  
+  if ! command -v node &> /dev/null; then
+    print_warning "Node.js not found. Installing Node.js 22..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs > /dev/null 2>&1
+  fi
+  
+  print_success "System environment is ready." ; sleep 1
 }
 
 # --- START ---
 start_script
 fetch_vps_ip
+
 echo ""; premium_header "SYSTEM FIREWALL - IP VERIFICATION" "$BRIGHT_CYAN"
-verify_mongodb_direct "ip" || { print_error "IP UNAUTHORIZED"; exit 1; }
+print_info "Verifying VPS IP: $VPS_IP"
+verify_mongodb_direct "ip"
+if [ $? -eq 0 ]; then
+    print_success "IP AUTHORIZED" ; sleep 1
+else
+    print_error "IP UNAUTHORIZED"
+    exit 1
+fi
 
 SESSION_FILE="/root/.fzh_session"
 if [ ! -f "$SESSION_FILE" ]; then
     premium_header "IDENTITY VERIFICATION REQUIRED" "$BRIGHT_MAGENTA"
-    read -s -p "  👉 OWNER PASSWORD : " SECOND_PWD; echo
-    read -p "  👉 CUSTOM API KEY: " CLIENT_API_KEY
+    print_warning "Password entries are hidden while typing for security."
+    echo -n -e "  ${BOLD}${BRIGHT_WHITE}👉 OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
+    echo -n -e "  ${BOLD}${BRIGHT_WHITE}👉 CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
+    
+    print_info "Verifying credentials..."
     verify_mongodb_direct "full" "$SECOND_PWD" "$CLIENT_API_KEY"
-    if [ $? -eq 0 ]; then touch "$SESSION_FILE"; else exit 1; fi
+    if [ $? -eq 0 ]; then 
+        print_success "Access Granted!"
+        touch "$SESSION_FILE"
+        sleep 1
+    else 
+        print_error "Access Denied: Invalid Password or API Key."
+        exit 1
+    fi
 fi
 
 while true; do
