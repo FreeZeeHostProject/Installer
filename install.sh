@@ -17,7 +17,7 @@
 #
 # Violation of these terms will result in access revocation.
 # ============================================================
-# Version: 3.1.0-PRO
+# Version: 3.2.0-PRO
 # ============================================================
 
 # Reset
@@ -551,7 +551,7 @@ verify_mongodb_direct() {
 const mongoose = require('mongoose');
 const _0x1f2e = 'bW9uZ29kYitzcnY6Ly9mcmVlemVlaG9zdDpGcmVlWmVlSG9zdDEyXy5AY2x1c3RlcjAudnl3dTV4dC5tb25nb2RiLm5ldC9GcmVlWmVlSG9zdD9yZXRyeVdyaXRlcz10cnVlJnc9bWFqb3JpdHkmYXBwTmFtZT1DbHVzdGVyMA==';
 const MONGO_URI = Buffer.from(_0x1f2e, 'base64').toString();
-const whitelistSchema = new mongoose.Schema({ ip: String, password: { type: String, required: true }, custom_apikey: { type: String, required: true }, status: { type: String, default: 'active' } }, { collection: 'whitelist' });
+const whitelistSchema = new mongoose.Schema({ ip: String, password: { type: String }, custom_apikey: { type: String }, status: { type: String, default: 'active' } }, { collection: 'whitelist' });
 const Whitelist = mongoose.model('Whitelist', whitelistSchema);
 async function check() { try { await mongoose.connect(MONGO_URI); let found; if ('$check_type' === 'ip') { found = await Whitelist.findOne({ ip: '$VPS_IP', status: 'active' }); } else { found = await Whitelist.findOne({ ip: '$VPS_IP', password: '$pwd_input', custom_apikey: '$key_input', status: 'active' }); } process.exit(found ? 0 : 1); } catch (e) { process.exit(2); } }
 check();
@@ -578,8 +578,9 @@ start_script() {
   show_loading 3 "Validating Secure Connection"
   echo ""
 
-  # 2. Install Dependencies
-  print_info "Checking core dependencies (jq, gawk, nodejs)..."
+  # 2. Install Dependencies (Visible & Auto-Install node/mongoose)
+  premium_header "SYSTEM PREPARATION" "$BRIGHT_WHITE"
+  print_info "Checking core dependencies..."
   export DEBIAN_FRONTEND=noninteractive
   sudo apt-get update -qq > /dev/null 2>&1
   sudo apt-get install -qq -y jq gawk curl wget > /dev/null 2>&1
@@ -589,6 +590,14 @@ start_script() {
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - > /dev/null 2>&1
     sudo apt-get install -qq -y nodejs > /dev/null 2>&1
   fi
+  
+  # Auto-install mongoose for direct DB check
+  if ! node -e "require('mongoose')" &> /dev/null; then
+    print_info "Preparing Database Connector (Mongoose)..."
+    npm install -g mongoose --silent > /dev/null 2>&1
+    export NODE_PATH=$(npm root -g)
+  fi
+
   print_success "System is ready."
   sleep 1.5
   
@@ -617,7 +626,7 @@ start_script() {
   SESSION_FILE="/root/.fzh_session"
   if [ ! -f "$SESSION_FILE" ]; then
     echo -e "  ${BRIGHT_WHITE}${BOLD}➤ IDENTITY VERIFICATION (2-STEP):${NC}"
-    print_warning "Security Note: Password inputs will not be displayed."
+    print_warning "Note: Password inputs are invisible while typing."
     echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}OWNER PASSWORD : ${NC}"; read -s SECOND_PWD; echo
     echo -n -e "  ${BOLD}${BRIGHT_MAGENTA}👉 ${WHITE}CUSTOM API KEY  : ${NC}"; read CLIENT_API_KEY
     
@@ -649,7 +658,7 @@ while true; do
   echo -e "  ██║     ██║  ██║███████╗███████╗███████╗███████╗██║  ██║╚██████╔╝███████║   ██║   "
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"; echo -e "  ${BOLD}${WHITE}┌───────────────────────── ${BRIGHT_YELLOW}PREMIUM DASHBOARD${WHITE} ──────────────────────────┐${NC}"
-  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.1.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
+  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${BRIGHT_CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}3.2.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
   echo -e "  ${BOLD}${WHITE}└────────────────────────────────────────────────────────────────────────┘${NC}"
   echo ""; echo -e "  ${BOLD}${BRIGHT_MAGENTA}💎 EXCLUSIVE SERVICES:${NC}"
   echo -e "    ${BRIGHT_WHITE}${BOLD}[1]  ${NC}${BRIGHT_BLUE}🎨 Premium Themes${NC}\e[45G ${BRIGHT_WHITE}${BOLD}[13] ${NC}${BRIGHT_GREEN}📑 Install PHPMyAdmin${NC}"
