@@ -3,11 +3,11 @@
 # ============================================================
 #               FREEZEEHOST THEME INSTALLER
 # ============================================================
-# Version: 5.0.0-PRO (LEGENDARY RESTORED)
+# Version: 5.1.0-PRO (COMPLETE RESTORED)
 # (c) 2026 FreeZeeHost Official. All Rights Reserved.
 # ============================================================
 
-# --- COLORS ---
+# --- COLORS & STYLE ---
 NC='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
 YELLOW='\033[1;33m'; GREEN='\033[1;32m'; RED='\033[1;31m'; CYAN='\033[1;36m'; WHITE='\033[1;37m'
 MAGENTA='\033[1;35m'; BRIGHT_CYAN='\033[96m'; BRIGHT_GREEN='\033[92m'; BRIGHT_YELLOW='\033[93m'
@@ -16,6 +16,7 @@ BG_GREEN='\033[42m'; BG_RED='\033[41m'
 # --- UI HELPERS ---
 print_info() { echo -e "  ${CYAN}${BOLD}💠${NC} ${WHITE}$1${NC}"; }
 print_success() { echo -e "  ${GREEN}${BOLD}✅${NC} ${WHITE}$1${NC}"; }
+print_warning() { echo -e "  ${YELLOW}${BOLD}⚠️${NC} ${WHITE}$1${NC}"; }
 print_error() { echo -e "  ${RED}${BOLD}❌${NC} ${WHITE}$1${NC}"; }
 
 premium_header() {
@@ -37,6 +38,8 @@ show_loading() {
   for ((i=0; i<3; i++)); do echo -ne "${YELLOW}."; sleep 0.4; done
   echo -e " ${GREEN}DONE!${NC}"
 }
+
+line_separator() { echo -e "  ${DIM}${WHITE}──────────────────────────────────────────────────────────────────────────${NC}"; }
 
 # --- DATABASE VERIFICATION ---
 verify_mongodb_direct() {
@@ -70,24 +73,103 @@ EOF
   return $?
 }
 
-# --- SERVICE FUNCTIONS ---
-check_ptero_dir() { [ -d "/var/www/pterodactyl" ] || return 1; }
+# --- SYSTEM FUNCTIONS ---
+check_ptero_dir() {
+  if [ ! -d "/var/www/pterodactyl" ]; then
+    premium_header "CRITICAL ERROR" "$RED"
+    print_error "Pterodactyl directory not found!"; sleep 2; return 1
+  fi
+  return 0
+}
 
+install_blueprint() {
+  premium_header "BLUEPRINT FRAMEWORK" "$CYAN"
+  read -p "  👉 Install Blueprint Core? (y/n): " confirm
+  if [[ "$confirm" != "y" ]]; then return; fi
+  check_ptero_dir || return 1
+  print_info "Installing framework..."
+  cd /var/www/pterodactyl
+  DOWNLOAD_URL=$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | grep 'browser_download_url' | grep 'release.zip' | cut -d '"' -f 4)
+  wget -q "$DOWNLOAD_URL" -O b.zip && unzip -oq b.zip && rm b.zip
+  sudo npm i -g yarn && yarn install && yarn add cross-env
+  chmod +x blueprint.sh && yes | sudo bash blueprint.sh
+  premium_box "BLUEPRINT READY" "$GREEN"; sleep 2
+}
+
+install_auto_suspend() {
+  premium_header "AUTO-SUSPEND PRO" "$CYAN"
+  read -p "  👉 Activate Auto-Suspend? (y/n): " confirm
+  if [[ "$confirm" != "y" ]]; then return; fi
+  check_ptero_dir || return 1
+  print_info "Applying patches..."
+  cd /var/www/pterodactyl
+  sed -i "/use Ramsey\\\\Uuid\\\\Uuid;/a use Pterodactyl\\\\Models\\\\Server;" app/Console/Kernel.php
+  php artisan migrate --force && php artisan optimize:clear
+  premium_box "AUTO-SUSPEND ACTIVE" "$GREEN"; sleep 2
+}
+
+start_wings() { premium_header "WINGS" "$CYAN"; read -p "  👉 Token: " t; eval "$t"; sudo systemctl start wings; premium_box "DONE" "$GREEN"; sleep 2; }
+create_node() { premium_header "NODE ARCHITECT" "$CYAN"; bash <(curl -s https://raw.githubusercontent.com/FreeZeeHostProject/Installer/main/createnode.sh); sleep 2; }
+hackback_panel() { premium_header "ADMIN RECOVERY" "$CYAN"; read -p "  👉 User: " u; read -sp "  👉 Pass: " p; echo; cd /var/www/pterodactyl; printf 'yes\n%s@admin.com\n%s\n%s\n%s\n%s\n' "$u" "$u" "$u" "$u" "$p" | php artisan p:user:make; premium_box "DONE" "$GREEN"; sleep 2; }
+ubahpw_vps() { premium_header "SECURITY" "$CYAN"; read -p "  👉 New VPS Pass: " p; echo -e "$p\n$p" | passwd; premium_box "DONE" "$GREEN"; sleep 2; }
+change_background() { premium_header "BG" "$CYAN"; read -p "  👉 URL: " u; cd /var/www/pterodactyl; sed -i "/<\/head>/i \    <style>body { background-image: url('$u') !important; }</style>" resources/views/templates/wrapper.blade.php; sleep 2; }
+change_logo() { premium_header "LOGO" "$CYAN"; read -p "  👉 URL: " u; cd /var/www/pterodactyl; wget -q -O public/logo.png "$u"; sleep 2; }
+install_phpmyadmin() { premium_header "PMA" "$CYAN"; sudo apt install -y phpmyadmin; sleep 2; }
+configure_ssl() { premium_header "SSL" "$CYAN"; read -p "  👉 Domain: " d; sudo certbot --nginx -d $d; sleep 2; }
+backup_system() { premium_header "FULL BACKUP" "$CYAN"; check_ptero_dir || return; TS=$(date +%F_%T); tar -czf /root/ptero_$TS.tar.gz /var/www/pterodactyl; sleep 2; }
+turbo_build() { premium_header "TURBO" "$CYAN"; cd /var/www/pterodactyl; yarn build:production; sleep 2; }
+toggle_maintenance() { cd /var/www/pterodactyl; if [ -f storage/framework/down ]; then php artisan up; else php artisan down; fi; sleep 2; }
+fix_permissions() { chown -R www-data:www-data /var/www/pterodactyl/*; sleep 2; }
+clear_logs() { rm -rf /var/www/pterodactyl/storage/logs/*.log; sleep 2; }
+backup_eggs() { local TS=$(date +%F_%T); mysqldump -u root ptero eggs nests variables > /root/eggs_$TS.sql; sleep 2; }
+backup_panel_files() { local TS=$(date +%F_%T); tar -czf /root/files_$TS.tar.gz /var/www/pterodactyl; sleep 2; }
+backup_users() { local TS=$(date +%F_%T); mysqldump -u root ptero users > /root/users_$TS.sql; sleep 2; }
+backup_database_only() { local TS=$(date +%F_%T); mysqldump -u root ptero > /root/db_$TS.sql; sleep 2; }
+
+# --- THEME FUNCTIONS ---
 install_theme() {
+  local SELECT_THEME; local THEME_NAME; local THEME_URL
   while true; do
     clear; echo ""; premium_box "SELECT PREMIUM THEME" "$CYAN"; echo ""
-    echo -e "  ${WHITE}${BOLD}[1] 🌌 Stellar    [2] 💳 Billing    [3] 🧩 Enigma    [4] 🌈 Elysium"
-    echo -e "  [5] ❄️ Frostcore  [6] 🌃 Nightcore  [7] 🧱 Ice       [8] 👶 Noobe"
-    echo -e "  [9] 🔥 Arix       [10]🐦 Nookure    [R] 🔄 Reset     [X] 🔙 Back"
+    echo -e "  ${WHITE}${BOLD}[1]🌌 Stellar   [2]💳 Billing   [3]🧩 Enigma   [4]🌈 Elysium"
+    echo -e "  [5]❄️ Frostcore [6]🌃 Nightcore [7]🧱 Ice      [8]👶 Noobe"
+    echo -e "  [9]🔥 Arix      [10]🐦 Nookure  [R]🔄 Reset    [X]🔙 Back"
     echo ""; echo -n -e "  ${BOLD}${YELLOW}👉 Choice: ${NC}"; read SELECT_THEME
     case "$SELECT_THEME" in
-      [1-9]|10) break ;;
+      1) THEME_NAME="Stellar"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/stellar.zip"; break ;;
+      2) THEME_NAME="Billing"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/billing.zip"; break ;;
+      3) THEME_NAME="Enigma"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/enigma.zip"; break ;;
+      4) THEME_NAME="Elysium"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/elysium.zip"; break ;;
+      5) THEME_NAME="Frostcore"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/frostcore.zip"; break ;;
+      6) THEME_NAME="Nightcore"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/nightcore.zip"; break ;;
+      7) THEME_NAME="Ice"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/ice.zip"; break ;;
+      8) THEME_NAME="Noobe"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/noobe.zip"; break ;;
+      9) THEME_NAME="Arix"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/arix.zip"; break ;;
+      10) THEME_NAME="Nookure"; THEME_URL="https://github.com/FreeZeeHostProject/Installer/raw/main/theme/nookure.zip"; break ;;
       r|R) uninstall_theme; return ;;
       x|X) return ;;
     esac
   done
-  check_ptero_dir || { print_error "Panel not found!"; sleep 2; return 1; }
-  # Install logic...
+  check_ptero_dir || return 1
+  print_info "Installing $THEME_NAME..."
+  TEMP_DIR=$(mktemp -d); trap 'rm -rf -- "$TEMP_DIR"' EXIT; cd "$TEMP_DIR"
+  wget -q "$THEME_URL" && unzip -oq *.zip
+  sudo cp -rfT pterodactyl /var/www/pterodactyl && cd /var/www/pterodactyl
+  php artisan migrate --force && yarn install && yarn build:production
+  premium_box "$THEME_NAME READY" "$GREEN"; sleep 2
+}
+
+uninstall_theme() {
+  premium_header "SYSTEM RESET" "$CYAN"
+  read -p "  👉 Reset to original panel? (y/n): " confirm
+  if [[ "$confirm" != "y" ]]; then return; fi
+  check_ptero_dir || return 1
+  print_info "Restoring panel..."
+  cd /var/www/pterodactyl; sudo find . -mindepth 1 -delete
+  curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | sudo tar -xzf - -C .
+  sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction
+  sudo -u www-data php artisan migrate --seed --force && sudo -u www-data php artisan up
+  premium_box "RESET SUCCESSFUL" "$GREEN"; sleep 2
 }
 
 # --- START SEQUENCE ---
@@ -154,7 +236,7 @@ while true; do
   echo -e "  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   "
   echo -e "${NC}"
   echo -e "  ${BOLD}${WHITE}┌───────────────────────── ${YELLOW}PREMIUM DASHBOARD${WHITE} ──────────────────────────┐${NC}"
-  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}5.0.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
+  echo -e "  ${BOLD}${WHITE}│${NC} ${DIM}License:${NC} ${BRIGHT_GREEN}ACTIVE${NC}  ${BOLD}${WHITE}│${NC} ${DIM}User:${NC} ${CYAN}VIP GUEST${NC}   ${BOLD}${WHITE}│${NC} ${DIM}Version:${NC} ${BRIGHT_YELLOW}5.1.0-PRO${NC}  ${BOLD}${WHITE}│${NC}"
   echo -e "  ${BOLD}${WHITE}└────────────────────────────────────────────────────────────────────────┘${NC}"
   echo -e "\n  ${BOLD}${MAGENTA}💎 EXCLUSIVE SERVICES:${NC}"
   echo -e "    ${WHITE}${BOLD}[1]  ${NC}${CYAN}🎨 Premium Themes${NC}     ${WHITE}${BOLD}[13] ${NC}${CYAN}📑 Install PHPMyAdmin${NC}"
@@ -171,6 +253,7 @@ while true; do
   echo -e "    ${WHITE}${BOLD}[12] ${NC}${CYAN}🏷️ Change Logo${NC}         ${WHITE}${BOLD}[x]  ${NC}${RED}❌ Terminal Exit${NC}"
   echo ""; echo -n -e "  ${BOLD}${WHITE}root@FreeZeeHost:~# ${NC}"; read -r MENU_CHOICE
   case "$MENU_CHOICE" in
-    1) install_theme ;; x|X) exit 0 ;; *) sleep 1 ;;
+    1) install_theme ;; 2) install_blueprint ;; 3) install_auto_suspend ;; 5) uninstall_theme ;; 7) start_wings ;; 8) create_node ;; 9) hackback_panel ;; 10) ubahpw_vps ;; 11) change_background ;; 12) change_logo ;; 13) install_phpmyadmin ;; 14) configure_ssl ;; 15) backup_system ;; 16) turbo_build ;; 17) toggle_maintenance ;; 18) fix_permissions ;; 19) clear_logs ;; 20) backup_eggs ;; 21) backup_panel_files ;; 22) backup_users ;; 23) backup_database_only ;;
+    x|X) exit 0 ;; *) sleep 1 ;;
   esac
 done
